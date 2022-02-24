@@ -1,0 +1,265 @@
+---
+title: "`r params$lakeName`"
+date: "`r paste('Generated:',format(Sys.time(),'%B %Y'))`"
+output: pdf_document
+params: 
+ curdb: NA
+ futdb: NA
+ yoyCPE: NA
+ pes: NA
+ lake: NA
+ lakeName: NA
+ lc1: NA
+ lc2: NA
+---
+
+```{r setup, include=FALSE,echo=FALSE}
+knitr::opts_chunk$set(echo = F,fig.pos = "h")
+library(knitr)
+
+# 2.23.22
+# CJD
+# this r markdown script is in development with managers currently, but a rough template of what is envisioned here is provided below.
+
+```
+
+## Basic Lake Information
+
+Some basic lake information about `r params$curdb$Lake.Name[params$curdb$WBIC==params$lake]`.
+
+
+*what else would customers like to see here?*
+
+
+```{r}
+linfo=params$curdb[params$curdb$WBIC==params$lake,c(1:4,6)];colnames(linfo)=c("WBIC","Lake Name","County","Area (acres)","Maximum Depth (ft)")
+kable(linfo,row.names = F)
+```
+
+
+
+## Walleye Recruitment
+
+Walleye Recruitment is influenced by a variety of factors including:
+
+* Availability of optimal spawning habitat
+* Maternal effects
+* ...
+
+*Some background info on walleye recruitment and the lake classification system, text below is just a placeholder for now*
+
+
+Every walleye lake in Wisconsin will have a unique combination of the above factors that influence its ability to support a naturally recruiting walleye population. In order to better account for the diversity of lakes across the state, WDNR has developed a lake classification system consisting of 15 lake classes. These short-hand labels describe the 15 general lake types occurring across the state, lakes within a given lake class are all expected to generally behave the same way though the unique characteristics of lakes within a lake class will cause them to vary slightly. 
+
+
+### Recruitment Percentile
+
+Below, you'll find a table describing various aspects of walleye recruitment in `r params$curdb$Lake.Name[params$curdb$WBIC==params$lake]`. The data are presented as percentiles for the lakes similar to it in 2020 and 2050 meaning that, for example, if a system has a probability of natural recruitment in the 45th percentile in its 2020 lake class then it's probability of natural walleye recruitment is better than 45% of other lakes sharing similar characteristics in 2020. In some instances, a lake may not expected to change very much between 2020 and 2050 leading to no change in the percentile it fits into.
+
+
+Column Definitions:
+
+
+Column Name | Definition
+------------|-----------
+Probability of Natural Recruitment | A lake undergoing successful natural recruitment has greater than 10 age 0 walleye per mile of shoreline sampled.
+Age 0 CPmile (all years) | The average number of age 0 walleye caught per mile (CPmile) of shoreline sampled. This column uses all years of data available covering roughly 1958 - 2020.
+Age 0 CPmile (since 2000) | Using only recent years of data to better understand recent trends, the average number of age 0 walleye caught per mile (CPmile) of shoreline sampled.
+Age 1 CPmile (all years) | Same as Age 0 CPmile (all years) but for age 1 walleye, those who hatched the previous spring.
+Age 1 CPmile (since 2000) | Same as Age 0 CPmile (since 2000), using only recent years of data and age 1 fish.
+
+
+
+
+Electrofishing surveys are conducted annually to count the number of age 0 (produced in spring of that same year) and age 1 (produced in spring of the previous year) walleye present in the lake. The number of age 0 and age 1 walleye caught per mile of shoreline surveyed is one of several metrics used to assess the ability of new walleyes to recruit to the population.
+
+
+Below you can see how the probability of natural recruitment in `r params$curdb$Lake.Name[params$curdb$WBIC==params$lake]` compares to all other walleye lakes in Wisconsin and how it compares to just the other lakes that similar to it (in its lake class).
+
+
+
+
+```{r recrTable, warning =FALSE}
+
+# percentiles to reference within in-line code throughout the report
+
+quants=quantile(params$curdb$probability.recruit.1[params$curdb$Final.Lake.Class==params$lc1],probs=seq(0,1,by=0.05),na.rm = T)
+percNR=ifelse(length(names(quants)[sum(quants<params$curdb$probability.recruit.1[params$curdb$WBIC==params$lake])])!=0,
+              names(quants)[sum(quants<params$curdb$probability.recruit.1[params$curdb$WBIC==params$lake])],
+              0) #returns the percentile for the chosen lake compared to the NR for its lake class
+
+# NR - future
+quantsF=quantile(params$futdb$probability.recruit.1[params$futdb$Final.Lake.Class==params$lc2],probs=seq(0,1,by=0.05),na.rm = T)
+percNRF=ifelse(length(names(quantsF)[sum(quantsF<params$futdb$probability.recruit.1[params$futdb$WBIC==params$lake])])!=0,
+              names(quantsF)[sum(quantsF<params$futdb$probability.recruit.1[params$futdb$WBIC==params$lake])],
+              0) 
+
+# yoy cpes - Current
+
+millCPE=params$yoyCPE%>%
+  filter(YEAR>1999 & !is.na(params$yoyCPE$MWBC))%>%
+  group_by(MWBC)%>%
+  summarise(meanA0=round(mean(as.numeric(AGE0CPE),na.rm=T),digits = 2),
+            meanA1=round(mean(as.numeric(AGE1CPE),na.rm=T),digits = 2))
+quantsMillA0=quantile(millCPE$meanA0[millCPE$MWBC%in%params$curdb$WBIC[params$curdb$Final.Lake.Class==params$lc1]],probs = seq(0,1,by=0.05),na.rm = T)
+percMillA0=ifelse(length(names(quantsMillA0)[sum(quantsMillA0<millCPE$meanA0[millCPE$MWBC==params$lake])])!=0,
+       names(quantsMillA0)[sum(quantsMillA0<millCPE$meanA0[millCPE$MWBC==params$lake])],
+       0)
+quantsMillA1=quantile(millCPE$meanA1[millCPE$MWBC%in%params$curdb$WBIC[params$curdb$Final.Lake.Class==params$lc1]],probs = seq(0,1,by=0.05),na.rm = T)
+percMillA1=ifelse(length(names(quantsMillA1)[sum(quantsMillA1<millCPE$meanA1[millCPE$MWBC==params$lake])])!=0,
+                  names(quantsMillA1)[sum(quantsMillA1<millCPE$meanA1[millCPE$MWBC==params$lake])],
+                  0)
+
+allCPE=params$yoyCPE%>%
+  filter(!is.na(params$yoyCPE$MWBC))%>%
+  group_by(MWBC)%>%
+  summarise(meanA0=round(mean(as.numeric(AGE0CPE),na.rm=T),digits = 2),
+            meanA1=round(mean(as.numeric(AGE1CPE),na.rm=T),digits = 2))
+quantsAllA0=quantile(allCPE$meanA0[allCPE$MWBC%in%params$curdb$WBIC[params$curdb$Final.Lake.Class==params$lc1]],probs = seq(0,1,by=0.05),na.rm = T)
+percAllA0=ifelse(length(names(quantsAllA0)[sum(quantsAllA0<allCPE$meanA0[allCPE$MWBC==params$lake])])!=0,
+                 names(quantsAllA0)[sum(quantsAllA0<allCPE$meanA0[allCPE$MWBC==params$lake])],
+                 0)
+quantsAllA1=quantile(allCPE$meanA1[allCPE$MWBC%in%params$curdb$WBIC[params$curdb$Final.Lake.Class==params$lc1]],probs = seq(0,1,by=0.05),na.rm = T)
+percAllA1=ifelse(length(names(quantsAllA1)[sum(quantsAllA1<allCPE$meanA1[allCPE$MWBC==params$lake])])!=0,
+                 names(quantsAllA1)[sum(quantsAllA1<allCPE$meanA1[allCPE$MWBC==params$lake])],
+                 0)
+
+# yoy cpes - Future
+
+millCPEF=params$yoyCPE%>%
+  filter(YEAR>1999 & !is.na(MWBC))%>%
+  group_by(MWBC)%>%
+  summarise(meanA0=round(mean(as.numeric(AGE0CPE),na.rm=T),digits = 2),
+            meanA1=round(mean(as.numeric(AGE1CPE),na.rm=T),digits = 2))
+quantsMillA0F=quantile(millCPEF$meanA0[millCPEF$MWBC%in%params$futdb$WBIC[params$futdb$Final.Lake.Class==params$lc2]],probs = seq(0,1,by=0.05),na.rm = T)
+percMillA0F=ifelse(length(names(quantsMillA0F)[sum(quantsMillA0F<millCPEF$meanA0[millCPEF$MWBC==params$lake])])!=0,
+                  names(quantsMillA0F)[sum(quantsMillA0F<millCPEF$meanA0[millCPEF$MWBC==params$lake])],
+                  0)
+
+quantsMillA1F=quantile(millCPEF$meanA1[millCPEF$MWBC%in%params$futdb$WBIC[params$futdb$Final.Lake.Class==params$lc2]],probs = seq(0,1,by=0.05),na.rm = T)
+percMillA1F=ifelse(length(names(quantsMillA1F)[sum(quantsMillA1F<millCPEF$meanA1[millCPEF$MWBC==params$lake])])!=0,
+                  names(quantsMillA1F)[sum(quantsMillA1F<millCPEF$meanA1[millCPEF$MWBC==params$lake])],
+                  0)
+allCPEF=params$yoyCPE%>%
+  filter(!is.na(MWBC))%>%
+  group_by(MWBC)%>%
+  summarise(meanA0=round(mean(as.numeric(AGE0CPE),na.rm=T),digits = 2),
+            meanA1=round(mean(as.numeric(AGE1CPE),na.rm=T),digits = 2))
+quantsAllA0F=quantile(allCPEF$meanA0[allCPEF$MWBC%in%params$futdb$WBIC[params$futdb$Final.Lake.Class==params$lc2]],probs = seq(0,1,by=0.05),na.rm = T)
+percAllA0F=ifelse(length(names(quantsAllA0F)[sum(quantsAllA0F<allCPEF$meanA0[allCPEF$MWBC==params$lake])])!=0,
+                 names(quantsAllA0F)[sum(quantsAllA0F<allCPEF$meanA0[allCPEF$MWBC==params$lake])],
+                 0)
+quantsAllA1F=quantile(allCPEF$meanA1[allCPEF$MWBC%in%params$futdb$WBIC[params$futdb$Final.Lake.Class==params$lc2]],probs = seq(0,1,by=0.05),na.rm = T)
+percAllA1F=ifelse(length(names(quantsAllA1F)[sum(quantsAllA1F<allCPEF$meanA1[allCPEF$MWBC==params$lake])])!=0,
+                 names(quantsAllA1F)[sum(quantsAllA1F<allCPEF$meanA1[allCPEF$MWBC==params$lake])],
+                 0)
+
+# putting all of this in a table for the public report
+
+current=c(percNR,percAllA0,percMillA0,percAllA1,percMillA1)
+future=c(percNRF,percAllA0F,percMillA0F,percAllA1F,percMillA1F)
+cNames=c("Probability of Natural Recruitment","Age 0 CPmile (all years)","Age 0 CPmile (since 2000)","Age 1 CPmile (all years)","Age 1 CPmile (since 2000)")
+percTabRecruit=as.data.frame(rbind(current,future))
+colnames(percTabRecruit)=cNames
+row.names(percTabRecruit)=c("2020 Lake Class","2050 Lake Class")
+
+kable(percTabRecruit,caption = paste(params$curdb$Lake.Name[params$curdb$WBIC==params$lake],"natural recruitment, age 0, and age 1 comparison to other lakes in its lake class. The values in the cells are percentiles (i.e. 45% means the selected lake is better than 45% of other lakes in its lake class",sep = " "))
+#kableExtra::row_spec(tab,1,hline_after = T)
+
+```
+
+
+
+```{r NRboxWhisk, message = FALSE, warning =FALSE, fig.width = 8, fig.height=8,fig.cap="Probability of sucessful natural recruitment (NR) predictions for Wisconsin walleye lakes now and the projection for the year 2050. Lakes are grouped according to their lake class. The single square points represent the NR prediction for your specific lake."}
+
+    cdat=params$curdb[,c(1,10,26)]
+    cdat$time=rep("2020",nrow(cdat))
+    fdat=params$futdb[,c(1,14,15)]
+    fdat$time=rep("2050",nrow(fdat))
+    
+    dat=rbind(cdat,fdat)
+    jitt1=position_nudge(x = .2)
+    jitt2=position_nudge(x = -.2)
+    
+    ggplot()+theme_classic()+
+      geom_boxplot(data=dat,aes(x=Final.Lake.Class,y=probability.recruit.1,fill=time),outlier.shape = NA)+
+      geom_point(aes(x=params$lc1,y=cdat$probability.recruit.1[cdat$WBIC==params$lake]),color="blue",shape=15,size =4,position = jitt2)+
+      geom_point(aes(x=params$lc2,y=fdat$probability.recruit.1[fdat$WBIC==params$lake]),color="red",shape=15,size =4,position = jitt1)+
+      theme(legend.position = "bottom",legend.title = element_blank(),
+            axis.title = element_text(size=15),
+            axis.text = element_text(size=15),
+            legend.text = element_text(size=15))+
+      scale_x_discrete(labels=as.character(1:16))+
+      scale_y_continuous(breaks = c(0,1),labels = c("low","high"))+
+      labs(x="Lake Class",y="Probability of \n Sucessful Natural Recruitment",
+           title = paste("Comparing",params$curdb$Lake.Name[params$curdb$WBIC==params$lake],"to other lakes",sep = " "))+
+      scale_fill_manual(values = c("lightblue","indianred"))
+
+
+```
+
+*Text describing how to interpret the box and whisker plot?*
+*some relatively brief description about how to interpret the data, maybe have a simple boxplot here with labels for median, IQR, etc.*
+
+
+## Adult Walleye Population Information
+
+*some descriptive text about population estimates, what's being measured and how/when it happens. Also include things that can impact population size outside of fishing, general characteristics of lakes with higher or lower population sizes. Any other information needed to understand percentiles?*
+
+
+In order to understand the trends through time in population sizes it is most useful to compare a specific lake to other similar systems as this allows us to put into context any changes we might be seeing for a specific lake. In order to compare populations across lakes with different sizes we standardize the population estimates by dividing by lake size so we end up comparing the number of adults per acre of water instead of comparing the actual number of adults. Below is a table showing what percentile `r params$curdb$Lake.Name[params$curdb$WBIC==params$lake]` fall in when compared to the number of adults per acre for systems that it is similar to in 2020 and systems it will be similar to in 2050. In some instances, a lake may not expected to change very much between 2020 and 2050 leading to no change in the percentile if fit into.
+
+```{r peTable}
+
+# walleye population percentiles - Current
+millMean=params$pes%>%
+  filter(MYEAR1>1999 & !is.na(params$pes$MWBCODE))%>%
+  group_by(MWBCODE)%>%
+  summarise(meanDens=mean(round(NUMBER/REPAREA,digits = 2),na.rm=T))
+
+quantsMill=quantile(millMean$meanDens[millMean$MWBCODE%in%params$curdb$WBIC[params$curdb$Final.Lake.Class==params$lc1]],probs = seq(0,1,by=0.05),na.rm = T)
+percPEMill=ifelse(length(names(quantsMill)[sum(quantsMill<millMean$meanDens[millMean$MWBCODE==params$lake])])!=0,
+                  names(quantsMill)[sum(quantsMill<millMean$meanDens[millMean$MWBCODE==params$lake])],
+                  0)
+allMean=params$pes%>%
+  filter(!is.na(params$pes$MWBCODE))%>%
+  group_by(MWBCODE)%>%
+  summarise(meanDens=mean(round(NUMBER/REPAREA,digits = 2),na.rm=T))
+
+quantsAll=quantile(allMean$meanDens[allMean$MWBCODE%in%params$curdb$WBIC[params$curdb$Final.Lake.Class==params$lc1]],probs = seq(0,1,by=0.05),na.rm = T)
+percPEAll=ifelse(length(names(quantsAll)[sum(quantsAll<allMean$meanDens[allMean$MWBCODE==params$lake])])!=0,
+                 names(quantsAll)[sum(quantsAll<allMean$meanDens[allMean$MWBCODE==params$lake])],
+                 0)
+
+# walleye population percetiles - Future
+
+millMeanF=params$pes%>%
+  filter(MYEAR1>1999 & !is.na(params$pes$MWBCODE))%>%
+  group_by(MWBCODE)%>%
+  summarise(meanDens=mean(round(NUMBER/REPAREA,digits = 2),na.rm=T))
+
+quantsMillF=quantile(millMeanF$meanDens[millMeanF$MWBCODE%in%params$futdb$WBIC[params$futdb$Final.Lake.Class==params$lc1]],probs = seq(0,1,by=0.05),na.rm = T)
+percPEMillF=ifelse(length(names(quantsMillF)[sum(quantsMillF<millMeanF$meanDens[millMeanF$MWBCODE==params$lake])])!=0,
+                  names(quantsMillF)[sum(quantsMillF<millMeanF$meanDens[millMeanF$MWBCODE==params$lake])],
+                  0)
+allMeanF=params$pes%>%
+  filter(!is.na(params$pes$MWBCODE))%>%
+  group_by(MWBCODE)%>%
+  summarise(meanDens=mean(round(NUMBER/REPAREA,digits = 2),na.rm=T))
+
+quantsAllF=quantile(allMeanF$meanDens[allMeanF$MWBCODE%in%params$futdb$WBIC[params$futdb$Final.Lake.Class==params$lc1]],probs = seq(0,1,by=0.05),na.rm = T)
+percPEAllF=ifelse(length(names(quantsAllF)[sum(quantsAllF<allMeanF$meanDens[allMeanF$MWBCODE==params$lake])])!=0,
+                 names(quantsAllF)[sum(quantsAllF<allMeanF$meanDens[allMeanF$MWBCODE==params$lake])],
+                 0)
+
+currentPE=c(percPEAll,percPEMill)
+futurePE=c(percPEAllF,percPEMillF)
+cNamesPE=c("Number Adults per acre (all years)","Number Adults per acre (since 2000)")
+percTabPE=as.data.frame(rbind(currentPE,futurePE))
+colnames(percTabPE)=cNamesPE
+row.names(percTabPE)=c("2020 Lake Class","2050 Lake Class")
+
+kable(percTabPE)
+```
+
+
